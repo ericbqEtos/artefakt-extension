@@ -1,0 +1,43 @@
+{
+  "name": "artefakt-extension",
+  "version": "0.1.0",
+  "description": "Capture, cite, and document your research process",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "postinstall": "wxt prepare"
+  },
+  "keywords": ["browser-extension", "citation", "research", "provenance"],
+  "author": "Eric Blomquist <eric.blomquist@etos.org>",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.84.0",
+    "@wxt-dev/module-react": "^1.1.5",
+    "browser-image-compression": "^2.0.2",
+    "citeproc": "^2.4.63",
+    "date-fns": "^4.1.0",
+    "dexie": "^4.2.1",
+    "dexie-react-hooks": "^4.2.0",
+    "nanoid": "^5.1.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "uuid": "^13.0.0",
+    "vis-data": "^8.0.3",
+    "vis-timeline": "^8.4.0",
+    "wxt": "^0.20.11"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  }
+}

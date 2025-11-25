@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Focus styles for accessibility */
+@layer base {
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary-600;
+  }
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Origin Trail Timeline Styles */
+.origin-trail {
+  width: 100%;
+}
+
+.timeline-container {
+  background: #fafafa;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.timeline-thumb {
+  width: 40px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.timeline-title {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.timeline-platform {
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+/* Source type colors */
+.vis-item.source-ai-conversation {
+  background-color: #ede9fe;
+  border-color: #8b5cf6;
+}
+
+.vis-item.source-webpage {
+  background-color: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.vis-item.source-academic {
+  background-color: #dcfce7;
+  border-color: #22c55e;
+}
+
+.vis-item.source-video {
+  background-color: #fee2e2;
+  border-color: #ef4444;
+}
+
+.vis-item.source-podcast {
+  background-color: #ffedd5;
+  border-color: #f97316;
+}
+
+/* Selected state */
+.vis-item.vis-selected {
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* Focus styles for accessibility */
+.vis-item:focus,
+.vis-item:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .vis-timeline {
+    transition: none !important;
+  }
+}
