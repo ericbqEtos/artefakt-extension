@@ -6,7 +6,11 @@
       "Bash(npm init:*)",
       "Bash(npm install:*)",
       "Bash(npx tailwindcss init -p)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial project setup for Artefakt Extension\n\n- Set up WXT framework with React and TypeScript\n- Configure Tailwind CSS with accessible color palette\n- Create database schema using Dexie.js for IndexedDB\n- Implement platform adapters for ChatGPT, Claude, Gemini, YouTube, Google Scholar\n- Add screenshot capture and compression utilities\n- Create accessible UI components (Button, Select, Input, Card, Modal)\n- Set up popup and sidepanel entrypoints\n- Add CLAUDE.md with project documentation\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

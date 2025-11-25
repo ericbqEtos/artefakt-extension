@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
-import { processScreenshot } from '@/lib/capture/screenshot';
+import { db } from '../src/lib/db';
+import { processScreenshot } from '../src/lib/capture/screenshot';
 import { v4 as uuid } from 'uuid';
 
 export default defineBackground(() => {

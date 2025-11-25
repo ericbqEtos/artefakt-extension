@@ -12,7 +12,12 @@
     "zip:firefox": "wxt zip -b firefox",
     "postinstall": "wxt prepare"
   },
-  "keywords": ["browser-extension", "citation", "research", "provenance"],
+  "keywords": [
+    "browser-extension",
+    "citation",
+    "research",
+    "provenance"
+  ],
   "author": "Eric Blomquist <eric.blomquist@etos.org>",
   "license": "MIT",
   "dependencies": {
@@ -32,6 +37,7 @@
     "wxt": "^0.20.11"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^10.0.0",

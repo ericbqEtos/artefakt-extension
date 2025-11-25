@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
-import { Button } from '@/components/ui/Button';
+import { db } from '../../src/lib/db';
+import { Button } from '../../src/components/ui/Button';
 
 export function App() {
   const [isCapturing, setIsCapturing] = useState(false);

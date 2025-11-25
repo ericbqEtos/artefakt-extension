@@ -1,8 +1,8 @@
-import { extractGenericMetadata } from '@/lib/capture/adapters/generic';
-import { extractChatGPTMetadata } from '@/lib/capture/adapters/chatgpt';
-import { extractClaudeMetadata } from '@/lib/capture/adapters/claude';
-import { extractGeminiMetadata } from '@/lib/capture/adapters/gemini';
-import { extractYouTubeMetadata } from '@/lib/capture/adapters/youtube';
+import { extractGenericMetadata } from '../src/lib/capture/adapters/generic';
+import { extractChatGPTMetadata } from '../src/lib/capture/adapters/chatgpt';
+import { extractClaudeMetadata } from '../src/lib/capture/adapters/claude';
+import { extractGeminiMetadata } from '../src/lib/capture/adapters/gemini';
+import { extractYouTubeMetadata } from '../src/lib/capture/adapters/youtube';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
