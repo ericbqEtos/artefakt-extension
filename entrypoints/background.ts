@@ -17,7 +17,13 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
       case 'CAPTURE_SOURCE':
-        captureSource(sender.tab?.id!, message.payload)
+        // Use tabId from message (sent by popup) or sender.tab.id (sent by content script)
+        const tabId = message.tabId || sender.tab?.id;
+        if (!tabId) {
+          sendResponse({ error: 'No tab ID provided' });
+          return true;
+        }
+        captureSource(tabId, message.payload)
           .then(sendResponse)
           .catch(err => sendResponse({ error: err.message }));
         return true;
@@ -56,10 +62,52 @@ async function captureSource(tabId: number, options?: { selectedText?: string })
       quality: 80
     });
 
-    // 2. Get metadata from content script
-    const { metadata, selectedText } = await browser.tabs.sendMessage(tabId, {
-      type: 'EXTRACT_METADATA'
-    });
+    // 2. Try to get metadata from content script, inject if needed
+    let metadata: any;
+    let selectedText: string = '';
+
+    try {
+      const response = await browser.tabs.sendMessage(tabId, {
+        type: 'EXTRACT_METADATA'
+      });
+      metadata = response.metadata;
+      selectedText = response.selectedText || '';
+    } catch (err) {
+      // Content script not loaded, inject it programmatically
+      console.log('Content script not responding, injecting programmatically...');
+
+      // Execute script to extract metadata directly
+      const results = await browser.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          // Basic metadata extraction inline
+          const getMetaContent = (name: string): string | undefined => {
+            const el = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
+            return el?.getAttribute('content') || undefined;
+          };
+
+          return {
+            metadata: {
+              title: document.title,
+              url: window.location.href,
+              description: getMetaContent('description') || getMetaContent('og:description'),
+              author: getMetaContent('author'),
+              siteName: getMetaContent('og:site_name') || window.location.hostname,
+              sourceType: 'webpage',
+              type: 'webpage'
+            },
+            selectedText: window.getSelection()?.toString().trim() || ''
+          };
+        }
+      });
+
+      if (results && results[0]?.result) {
+        metadata = results[0].result.metadata;
+        selectedText = results[0].result.selectedText || '';
+      } else {
+        throw new Error('Failed to extract metadata');
+      }
+    }
 
     // 3. Process screenshot (compress, create thumbnail)
     const processedScreenshot = await processScreenshot(screenshotDataUrl);

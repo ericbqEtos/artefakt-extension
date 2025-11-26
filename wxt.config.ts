@@ -21,28 +21,30 @@ export default defineConfig({
       'activeTab',
       'storage',
       'sidePanel',
-      'clipboardWrite'
+      'clipboardWrite',
+      'scripting',
+      'tabs'
     ],
     host_permissions: [
-      'https://chat.openai.com/*',
-      'https://chatgpt.com/*',
-      'https://claude.ai/*',
-      'https://gemini.google.com/*',
-      'https://www.youtube.com/*',
-      'https://scholar.google.com/*'
+      '<all_urls>'
     ],
     side_panel: {
       default_path: 'sidepanel.html'
     },
     action: {
       default_popup: 'popup.html',
-      default_icon: 'icons/icon.svg'
+      default_icon: {
+        '16': 'icons/icon-16.png',
+        '32': 'icons/icon-32.png',
+        '48': 'icons/icon-48.png',
+        '128': 'icons/icon-128.png'
+      }
     },
     icons: {
-      '16': 'icons/icon.svg',
-      '32': 'icons/icon.svg',
-      '48': 'icons/icon.svg',
-      '128': 'icons/icon.svg'
+      '16': 'icons/icon-16.png',
+      '32': 'icons/icon-32.png',
+      '48': 'icons/icon-48.png',
+      '128': 'icons/icon-128.png'
     },
     commands: {
       'capture-source': {

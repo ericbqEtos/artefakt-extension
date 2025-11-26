@@ -17,12 +17,39 @@ export function App() {
     setError(null);
 
     try {
-      const response = await browser.runtime.sendMessage({ type: 'CAPTURE_SOURCE' });
+      // Get all tabs in the current window
+      const tabs = await browser.tabs.query({ currentWindow: true });
+
+      // Helper to check if a URL is capturable (not an extension or special page)
+      const isCapturableUrl = (url?: string) => {
+        if (!url) return false;
+        return url.startsWith('http://') || url.startsWith('https://');
+      };
+
+      // Find the active capturable tab
+      // This handles the case where the popup is opened as a page in Playwright tests
+      let targetTab = tabs.find(t => t.active && isCapturableUrl(t.url));
+
+      // If no active capturable tab, try to find any capturable tab
+      if (!targetTab) {
+        targetTab = tabs.find(t => isCapturableUrl(t.url));
+      }
+
+      if (!targetTab?.id) {
+        setError('No capturable tab found. Navigate to a webpage first.');
+        return;
+      }
+
+      const response = await browser.runtime.sendMessage({
+        type: 'CAPTURE_SOURCE',
+        tabId: targetTab.id
+      });
       if (response?.error) {
         setError(response.error);
       }
     } catch (err) {
       setError('Failed to capture source. Please try again.');
+      console.error('Capture error:', err);
     } finally {
       setIsCapturing(false);
     }

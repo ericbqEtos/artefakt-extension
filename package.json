@@ -10,7 +10,10 @@
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test": "npm run build && playwright test",
+    "test:ui": "npm run build && playwright test --ui",
+    "test:headed": "npm run build && playwright test --headed"
   },
   "keywords": [
     "browser-extension",
@@ -37,12 +40,14 @@
     "wxt": "^0.20.11"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3"
   }
