@@ -19,17 +19,51 @@ export function extractGeminiMetadata(): GeminiMetadata | null {
   };
 
   // Extract model version from UI
-  const modelIndicators = document.querySelectorAll('[class*="model"], [class*="version"]');
-  for (const el of modelIndicators) {
-    const text = el.textContent?.trim();
-    if (text && (
-      text.includes('Gemini') ||
-      text.includes('Pro') ||
-      text.includes('Ultra') ||
-      text.includes('1.5')
-    )) {
-      aiMetadata.modelVersion = text;
-      break;
+  // Updated November 2025: Gemini 3 (Pro, Deep Think) are latest models
+  const modelSelectors = [
+    '[data-testid="model-selector"]',
+    'button[aria-label*="model"]',
+    '[class*="model-selector"]',
+    '[class*="model"], [class*="version"]'
+  ];
+
+  for (const selector of modelSelectors) {
+    const elements = document.querySelectorAll(selector);
+    for (const el of elements) {
+      const text = el.textContent?.trim();
+      if (text && text.length < 100 && (
+        text.includes('Gemini') ||
+        text.includes('Pro') ||
+        text.includes('Ultra') ||
+        text.includes('Deep') ||
+        /\d\.\d/.test(text) // Version numbers like 3.0, 2.5
+      )) {
+        aiMetadata.modelVersion = text;
+        break;
+      }
+    }
+    if (aiMetadata.modelVersion) break;
+  }
+
+  // Fallback: search for model name patterns in page
+  if (!aiMetadata.modelVersion) {
+    const allText = document.body.innerText;
+    const modelPatterns = [
+      // Latest models (November 2025)
+      /Gemini\s*3(?:\.0)?\s*(?:Pro|Deep\s*Think)?/i,
+      // Previous generation (still available)
+      /Gemini\s*2\.5\s*(?:Pro|Flash(?:-Lite)?)/i,
+      /Gemini\s*2\.0\s*(?:Pro|Flash|Ultra)/i,
+      // Legacy
+      /Gemini\s*1\.5\s*(?:Pro|Flash|Ultra)/i,
+      /Gemini\s*(?:Pro|Ultra|Flash)/i
+    ];
+    for (const pattern of modelPatterns) {
+      const match = allText.match(pattern);
+      if (match) {
+        aiMetadata.modelVersion = match[0];
+        break;
+      }
     }
   }
 

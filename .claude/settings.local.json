@@ -31,7 +31,8 @@
       "Bash(npx playwright test:*)",
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 1)",
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue close 1 --comment \"Phase 1 complete! All items verified:\n- WXT project initialized with React\n- Core dependencies installed\n- Tailwind CSS v4 configured\n- Database schema working (verified via E2E capture test)\n- PNG icons generated from SVG\n- Extension loads and works in Chrome (Playwright E2E tests passing)\")",
-      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 2)"
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 2)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

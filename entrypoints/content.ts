@@ -3,6 +3,7 @@ import { extractChatGPTMetadata } from '../src/lib/capture/adapters/chatgpt';
 import { extractClaudeMetadata } from '../src/lib/capture/adapters/claude';
 import { extractGeminiMetadata } from '../src/lib/capture/adapters/gemini';
 import { extractYouTubeMetadata } from '../src/lib/capture/adapters/youtube';
+import { detectAIPlatform } from '../src/lib/capture/adapters/ai-detector';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -69,6 +70,19 @@ function extractMetadata() {
         platform: 'youtube'
       };
     }
+  }
+
+  // Try generic AI platform detection for unknown AI tools
+  const detectedAI = detectAIPlatform();
+  if (detectedAI && detectedAI.isAIConversation && detectedAI.confidence !== 'low') {
+    return {
+      ...extractGenericMetadata(),
+      aiMetadata: detectedAI.aiMetadata,
+      sourceType: 'ai-conversation',
+      platform: detectedAI.platformName || 'unknown-ai',
+      detectionConfidence: detectedAI.confidence,
+      detectedPatterns: detectedAI.aiMetadata?.detectedPatterns
+    };
   }
 
   // Fall back to generic extraction

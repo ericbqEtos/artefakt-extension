@@ -70,4 +70,46 @@ test.describe('Artefakt Extension', () => {
     // Verify the title contains "Example Domain" (from example.com)
     await expect(sourceItem.locator('p').first()).toContainText('Example Domain');
   });
+
+  test('can capture a YouTube video with timestamp', async ({ context, extensionId }) => {
+    // Navigate to a YouTube video
+    const page = await context.newPage();
+    // Using a short, popular public domain video
+    await page.goto('https://www.youtube.com/watch?v=jNQXAC9IVRw'); // "Me at the zoo" - first YouTube video
+
+    // Wait for video page to load
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000); // Wait for video player to initialize
+
+    // Get the popup page
+    const popupPage = await context.newPage();
+    await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
+    await popupPage.waitForLoadState('networkidle');
+
+    // Wait for popup to fully render
+    await popupPage.waitForSelector('button:has-text("Save This Page")');
+
+    // Click save button
+    await popupPage.getByRole('button', { name: /save this page/i }).click();
+
+    // Wait for capture to complete
+    await popupPage.waitForTimeout(3000);
+
+    // Verify no error occurred
+    const hasError = await popupPage.locator('#capture-error').isVisible().catch(() => false);
+    expect(hasError).toBe(false);
+
+    // Verify source was captured
+    await expect(popupPage.getByText(/recent sources \(1\)/i)).toBeVisible();
+
+    // Verify the source appears in the list
+    const sourceItem = popupPage.locator('ul[role="list"] li').first();
+    await expect(sourceItem).toBeVisible();
+
+    // The title should contain something related to the video
+    // (YouTube video titles can vary, so we just check it's captured)
+    const titleText = await sourceItem.locator('p').first().textContent();
+    console.log('YouTube capture title:', titleText);
+    expect(titleText).toBeTruthy();
+  });
 });
