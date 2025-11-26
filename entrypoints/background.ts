@@ -56,13 +56,24 @@ async function initSession() {
 
 async function captureSource(tabId: number, options?: { selectedText?: string }) {
   try {
-    // 1. Capture screenshot
-    const screenshotDataUrl = await browser.tabs.captureVisibleTab(undefined, {
-      format: 'jpeg',
-      quality: 80
-    });
+    // 1. Verify the tab exists and is capturable
+    const tab = await browser.tabs.get(tabId);
+    if (!tab.url?.startsWith('http://') && !tab.url?.startsWith('https://')) {
+      throw new Error('Cannot capture this page. Only HTTP/HTTPS pages can be captured.');
+    }
 
-    // 2. Try to get metadata from content script, inject if needed
+    // 2. Capture screenshot
+    let screenshotDataUrl: string;
+    try {
+      screenshotDataUrl = await browser.tabs.captureVisibleTab(undefined, {
+        format: 'jpeg',
+        quality: 80
+      });
+    } catch (err) {
+      throw new Error('Failed to capture screenshot. The page may be protected or hidden.');
+    }
+
+    // 3. Try to get metadata from content script, inject if needed
     let metadata: any;
     let selectedText: string = '';
 
@@ -109,16 +120,13 @@ async function captureSource(tabId: number, options?: { selectedText?: string })
       }
     }
 
-    // 3. Process screenshot (compress, create thumbnail)
+    // 4. Process screenshot (compress, create thumbnail)
     const processedScreenshot = await processScreenshot(screenshotDataUrl);
 
-    // 4. Get active session
+    // 5. Get active session
     const session = await db.sessions.where('isActive').equals(1).first();
 
-    // 5. Get tab info for provenance
-    const tab = await browser.tabs.get(tabId);
-
-    // 6. Create source record
+    // 6. Create source record (tab info already fetched at step 1)
     const source = {
       id: uuid(),
       createdAt: new Date(),

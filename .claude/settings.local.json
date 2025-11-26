@@ -22,7 +22,16 @@
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue create --title \"Phase 8: Testing & Polish\" --body \"$(cat <<''EOF''\n## Overview\nFinal testing, bug fixes, and preparation for release.\n\n## Functionality Testing\n- [ ] Capture source from regular webpage\n- [ ] Capture source from ChatGPT with model version\n- [ ] Capture source from Claude\n- [ ] Capture source from YouTube with timestamp\n- [ ] Screenshot compression produces files <200KB\n- [ ] Generate APA citation for webpage\n- [ ] Generate MLA citation for AI conversation\n- [ ] Generate Chicago citation for academic source\n- [ ] Copy citation to clipboard\n- [ ] Copy bibliography to clipboard\n- [ ] Origin trail shows sources chronologically\n- [ ] Click timeline item selects source\n- [ ] Sources persist after browser restart\n- [ ] Create shareable link (if Supabase configured)\n\n## Accessibility Testing\n- [ ] All elements reachable via Tab\n- [ ] Focus indicators visible\n- [ ] Logical focus order\n- [ ] Screen reader announces buttons correctly\n- [ ] Screen reader announces form labels\n- [ ] Color contrast passes WCAG AA (Lighthouse)\n- [ ] UI usable at 200% zoom\n- [ ] Timeline navigable with keyboard\n- [ ] Error messages announced by screen readers\n\n## Cross-Browser Testing\n- [ ] Chrome: All features work\n- [ ] Firefox: All features work\n- [ ] Edge: All features work\n- [ ] Safari: Basic capture works (optional)\n\n## Performance\n- [ ] Extension loads in <1s\n- [ ] Screenshot capture <3s\n- [ ] Side panel renders smoothly with 50+ sources\n- [ ] Bundle size reasonable (<1MB)\n\n## Release Prep\n- [ ] Update version in package.json and manifest\n- [ ] Create production build\n- [ ] Test production build in Chrome\n- [ ] Write release notes\n- [ ] Create zip for Chrome Web Store (if publishing)\nEOF\n)\")",
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue list)",
       "Bash(node scripts/generate-icons.js:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:wxt.dev)",
+      "WebFetch(domain:playwright.dev)",
+      "Bash(npx playwright install:*)",
+      "Bash(npm run test:*)",
+      "Bash(npx playwright test --headed)",
+      "Bash(npx playwright test:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 1)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue close 1 --comment \"Phase 1 complete! All items verified:\n- WXT project initialized with React\n- Core dependencies installed\n- Tailwind CSS v4 configured\n- Database schema working (verified via E2E capture test)\n- PNG icons generated from SVG\n- Extension loads and works in Chrome (Playwright E2E tests passing)\")",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 2)"
     ],
     "deny": [],
     "ask": []
