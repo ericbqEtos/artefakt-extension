@@ -8,6 +8,7 @@ import { ToastProvider, useToast } from '../../src/components/ui/Toast';
 import { SourceCard } from '../../src/components/SourceCard';
 import { Modal } from '../../src/components/ui/Modal';
 import { CitationFormatter } from '../../src/components/CitationFormatter';
+import { OriginTrail } from '../../src/components/OriginTrail';
 
 type Tab = 'sources' | 'timeline' | 'share';
 type SourceType = 'all' | 'ai-conversation' | 'webpage' | 'video' | 'academic' | 'pdf' | 'document';
@@ -18,6 +19,7 @@ function SidepanelContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<SourceType>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [timelineSelectedId, setTimelineSelectedId] = useState<string | undefined>();
   const { addToast } = useToast();
 
   const sources = useLiveQuery(
@@ -219,20 +221,22 @@ function SidepanelContent() {
           role="tabpanel"
           aria-labelledby="timeline-tab"
           hidden={activeTab !== 'timeline'}
-          className="flex-1 p-4 overflow-y-auto"
+          className="flex-1 p-4 overflow-hidden flex flex-col"
         >
           <h2 className="font-medium text-neutral-800 mb-4">
             Research Journey
           </h2>
-          {sources && sources.length > 0 ? (
-            <p className="text-neutral-500 italic">
-              Origin trail visualization coming in Phase 6...
-            </p>
-          ) : (
-            <p className="text-neutral-500 italic">
-              Capture some sources to see your research timeline.
-            </p>
-          )}
+          <div className="flex-1 min-h-0">
+            <OriginTrail
+              sources={sources || []}
+              selectedSourceId={timelineSelectedId}
+              onSourceSelect={(id) => {
+                setTimelineSelectedId(id);
+                // Also add to selection for citation generation
+                setSelectedSourceIds(new Set([id]));
+              }}
+            />
+          </div>
         </div>
 
         {/* Share Panel */}

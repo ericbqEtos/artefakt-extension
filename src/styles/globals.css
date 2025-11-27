@@ -112,6 +112,16 @@
   border-color: #f97316;
 }
 
+.vis-item.source-pdf {
+  background-color: #dcfce7;
+  border-color: #22c55e;
+}
+
+.vis-item.source-document {
+  background-color: #f3f4f6;
+  border-color: #6b7280;
+}
+
 /* Selected state */
 .vis-item.vis-selected {
   box-shadow: 0 0 0 2px #2563eb;
