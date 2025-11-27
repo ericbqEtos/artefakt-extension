@@ -3,6 +3,8 @@ import { extractChatGPTMetadata } from '../src/lib/capture/adapters/chatgpt';
 import { extractClaudeMetadata } from '../src/lib/capture/adapters/claude';
 import { extractGeminiMetadata } from '../src/lib/capture/adapters/gemini';
 import { extractYouTubeMetadata } from '../src/lib/capture/adapters/youtube';
+import { extractNotebookLMMetadata } from '../src/lib/capture/adapters/notebooklm';
+import { extractGrokMetadata } from '../src/lib/capture/adapters/grok';
 import { detectAIPlatform } from '../src/lib/capture/adapters/ai-detector';
 
 export default defineContentScript({
@@ -56,6 +58,30 @@ function extractMetadata() {
         ...aiMeta,
         sourceType: 'ai-conversation',
         platform: 'gemini'
+      };
+    }
+  }
+
+  if (hostname.includes('notebooklm.google.com') || hostname.includes('notebooklm.google')) {
+    const aiMeta = extractNotebookLMMetadata();
+    if (aiMeta) {
+      return {
+        ...extractGenericMetadata(),
+        ...aiMeta,
+        sourceType: 'ai-conversation',
+        platform: 'notebooklm'
+      };
+    }
+  }
+
+  if (hostname.includes('grok.com') || (hostname.includes('x.com') && window.location.pathname.includes('/grok'))) {
+    const aiMeta = extractGrokMetadata();
+    if (aiMeta) {
+      return {
+        ...extractGenericMetadata(),
+        ...aiMeta,
+        sourceType: 'ai-conversation',
+        platform: 'grok'
       };
     }
   }

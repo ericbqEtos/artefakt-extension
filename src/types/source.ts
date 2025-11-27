@@ -41,6 +41,28 @@ export interface SourceCapture {
     promptText?: string;
     shareableUrl?: string;
     conversationExcerpt?: string;
+    conversationTitle?: string;
+    responseExcerpt?: string;
+    // NotebookLM-specific
+    notebookTitle?: string;
+    outputType?: string;
+    sources?: string[];
+    toolContext?: {
+      outputType: string;
+      outputLabel: string;
+      outputDescription?: string;
+      generatedFromSources: boolean;
+      sourceCount?: number;
+      sourceNames?: string[];
+      duration?: string;
+      customization?: {
+        style?: string;
+        length?: string;
+        audience?: string;
+      };
+    };
+    // Grok-specific
+    isPrivateChat?: boolean;
   };
 
   // Visual capture

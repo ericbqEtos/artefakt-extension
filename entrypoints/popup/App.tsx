@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../src/lib/db';
 import { Button } from '../../src/components/ui/Button';
+import { Spinner } from '../../src/components/ui/Spinner';
+import { ToastProvider, useToast } from '../../src/components/ui/Toast';
+import { SourceCard } from '../../src/components/SourceCard';
 
-export function App() {
+function PopupContent() {
   const [isCapturing, setIsCapturing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [captureSuccess, setCaptureSuccess] = useState(false);
+  const { addToast } = useToast();
 
   // Get 5 most recent sources
   const recentSources = useLiveQuery(
@@ -14,20 +18,19 @@ export function App() {
 
   const handleCapture = async () => {
     setIsCapturing(true);
-    setError(null);
+    setCaptureSuccess(false);
 
     try {
       // Get all tabs in the current window
       const tabs = await browser.tabs.query({ currentWindow: true });
 
-      // Helper to check if a URL is capturable (not an extension or special page)
+      // Helper to check if a URL is capturable (web pages or local files)
       const isCapturableUrl = (url?: string) => {
         if (!url) return false;
-        return url.startsWith('http://') || url.startsWith('https://');
+        return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://');
       };
 
       // Find the active capturable tab
-      // This handles the case where the popup is opened as a page in Playwright tests
       let targetTab = tabs.find(t => t.active && isCapturableUrl(t.url));
 
       // If no active capturable tab, try to find any capturable tab
@@ -36,7 +39,7 @@ export function App() {
       }
 
       if (!targetTab?.id) {
-        setError('No capturable tab found. Navigate to a webpage first.');
+        addToast('error', 'No capturable tab found. Navigate to a webpage first.');
         return;
       }
 
@@ -44,11 +47,17 @@ export function App() {
         type: 'CAPTURE_SOURCE',
         tabId: targetTab.id
       });
+
       if (response?.error) {
-        setError(response.error);
+        addToast('error', response.error);
+      } else {
+        setCaptureSuccess(true);
+        addToast('success', 'Source captured successfully!');
+        // Reset success state after animation
+        setTimeout(() => setCaptureSuccess(false), 2000);
       }
     } catch (err) {
-      setError('Failed to capture source. Please try again.');
+      addToast('error', 'Failed to capture source. Please try again.');
       console.error('Capture error:', err);
     } finally {
       setIsCapturing(false);
@@ -56,7 +65,18 @@ export function App() {
   };
 
   const openSidePanel = async () => {
-    await browser.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
+    try {
+      // Get current window
+      const currentWindow = await browser.windows.getCurrent();
+      if (currentWindow.id) {
+        // Open side panel in current window
+        await browser.sidePanel.open({ windowId: currentWindow.id });
+      }
+    } catch (err) {
+      console.error('Failed to open side panel:', err);
+      // Fallback: open sidepanel.html in a new tab
+      await browser.tabs.create({ url: browser.runtime.getURL('/sidepanel.html') });
+    }
     window.close();
   };
 
@@ -79,18 +99,25 @@ export function App() {
       <Button
         onClick={handleCapture}
         disabled={isCapturing}
-        className="w-full mb-4"
+        className={`w-full mb-4 ${captureSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
         aria-busy={isCapturing}
-        aria-describedby={error ? 'capture-error' : undefined}
       >
-        {isCapturing ? 'Capturing...' : 'Save This Page'}
+        {isCapturing ? (
+          <span className="flex items-center justify-center gap-2">
+            <Spinner size="sm" label="Capturing" />
+            <span>Capturing...</span>
+          </span>
+        ) : captureSuccess ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Captured!</span>
+          </span>
+        ) : (
+          'Save This Page'
+        )}
       </Button>
-
-      {error && (
-        <p id="capture-error" className="text-sm text-red-600 mb-4" role="alert">
-          {error}
-        </p>
-      )}
 
       <section aria-labelledby="recent-sources-heading">
         <h2
@@ -107,22 +134,26 @@ export function App() {
         ) : (
           <ul className="space-y-2" role="list">
             {recentSources?.map(source => (
-              <li
-                key={source.id}
-                className="p-2 rounded border border-neutral-200 hover:bg-neutral-50"
-              >
-                <p className="text-sm font-medium text-neutral-900 truncate">
-                  {source.metadata.title}
-                </p>
-                <p className="text-xs text-neutral-500 truncate">
-                  {source.metadata.URL}
-                </p>
+              <li key={source.id}>
+                <SourceCard
+                  source={source}
+                  compact
+                  showThumbnail={false}
+                />
               </li>
             ))}
           </ul>
         )}
       </section>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <ToastProvider>
+      <PopupContent />
+    </ToastProvider>
   );
 }
 

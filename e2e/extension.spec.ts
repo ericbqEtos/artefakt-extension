@@ -5,6 +5,7 @@ test.describe('Artefakt Extension', () => {
     // Open the popup page directly
     const popupPage = await context.newPage();
     await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
+    await popupPage.waitForLoadState('networkidle');
 
     // Verify the title is displayed
     await expect(popupPage.locator('h1')).toHaveText('Artefakt');
@@ -19,7 +20,28 @@ test.describe('Artefakt Extension', () => {
   test('sidepanel opens and has tabs', async ({ context, extensionId }) => {
     // Open the sidepanel page directly
     const sidepanelPage = await context.newPage();
+
+    // Capture console errors
+    const consoleErrors: string[] = [];
+    sidepanelPage.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    sidepanelPage.on('pageerror', err => {
+      consoleErrors.push(err.message);
+    });
+
     await sidepanelPage.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+    await sidepanelPage.waitForLoadState('networkidle');
+
+    // Wait a bit for React to render
+    await sidepanelPage.waitForTimeout(2000);
+
+    // Log any console errors
+    if (consoleErrors.length > 0) {
+      console.log('Console errors:', consoleErrors);
+    }
 
     // Verify the title
     await expect(sidepanelPage.locator('h1')).toHaveText('Artefakt');

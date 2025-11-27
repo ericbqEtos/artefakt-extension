@@ -28,32 +28,36 @@ Artefakt is a "reference clipboard" extension that allows users to:
 
 ### Core Components
 
-1. **Background Service Worker** (`src/entrypoints/background.ts`)
+1. **Background Service Worker** (`entrypoints/background.ts`)
    - Handles keyboard shortcuts and message passing
    - Coordinates screenshot capture and source saving
    - Manages research sessions
 
-2. **Content Script** (`src/entrypoints/content.ts`)
+2. **Content Script** (`entrypoints/content.ts`)
    - Extracts metadata from web pages
    - Uses platform-specific adapters for AI tools (ChatGPT, Claude, Gemini) and YouTube
 
-3. **Popup** (`src/entrypoints/popup/`)
-   - Quick capture interface
-   - Shows recent sources
+3. **Popup** (`entrypoints/popup/`)
+   - Quick capture interface with loading states and toast notifications
+   - Shows 5 most recent sources with SourceCard component
+   - "Full View" button to open side panel
 
-4. **Side Panel** (`src/entrypoints/sidepanel/`)
-   - Full reference clipboard view
-   - Citation generation
-   - Origin trail visualization
+4. **Side Panel** (`entrypoints/sidepanel/`)
+   - Full reference clipboard view with search and filtering
+   - Source list with thumbnails and type badges
+   - Delete sources with confirmation modal
+   - Citation generation (Phase 5)
+   - Origin trail visualization (Phase 6)
 
 ### Platform Adapters
 
 Located in `src/lib/capture/adapters/`:
 - `generic.ts` - Schema.org JSON-LD, OpenGraph, meta tags extraction
-- `chatgpt.ts` - ChatGPT conversation and model version extraction
-- `claude.ts` - Claude conversation extraction
+- `chatgpt.ts` - ChatGPT conversation and model version extraction (GPT-5.1, o3, o4-mini)
+- `claude.ts` - Claude conversation extraction (Opus 4.5, Sonnet 4.5, Haiku 4.5)
 - `youtube.ts` - Video metadata with timestamp capture
-- `gemini.ts` - Gemini conversation extraction (planned)
+- `gemini.ts` - Gemini conversation extraction (Gemini 3)
+- `ai-detector.ts` - Generic AI platform detector for unknown tools
 - `scholar.ts` - Google Scholar academic paper extraction (planned)
 
 ### Data Model
@@ -123,27 +127,33 @@ npm run zip
 ## File Structure
 
 ```
-src/
-├── entrypoints/           # Extension entry points
-│   ├── background.ts      # Service worker
-│   ├── content.ts         # Content script
-│   ├── popup/             # Popup UI
-│   ├── sidepanel/         # Side panel UI
-│   └── options/           # Settings page
-├── components/            # React components
-│   ├── ui/                # Base UI components
-│   ├── SourceCard.tsx     # Source display
-│   ├── CitationFormatter.tsx
-│   └── OriginTrail.tsx    # Timeline visualization
-├── lib/
-│   ├── db/                # Dexie database setup
-│   ├── capture/           # Screenshot and metadata extraction
-│   │   └── adapters/      # Platform-specific extractors
-│   ├── citation/          # CSL processing and formatting
-│   └── storage/           # Sync and sharing
-├── hooks/                 # React hooks
-├── types/                 # TypeScript types
-└── styles/                # Global styles
+artefakt-extension/
+├── entrypoints/              # Extension entry points (WXT convention)
+│   ├── background.ts         # Service worker
+│   ├── content.ts            # Content script
+│   ├── popup/                # Popup UI
+│   │   ├── index.html
+│   │   ├── main.tsx
+│   │   └── App.tsx
+│   └── sidepanel/            # Side panel UI
+│       ├── index.html
+│       ├── main.tsx
+│       └── App.tsx
+├── src/
+│   ├── components/           # React components
+│   │   ├── ui/               # Base UI components (Button, Input, Select, Modal, Spinner, Toast)
+│   │   └── SourceCard.tsx    # Source display with thumbnails
+│   ├── lib/
+│   │   ├── db/               # Dexie database setup
+│   │   └── capture/          # Screenshot and metadata extraction
+│   │       ├── screenshot.ts # Image processing
+│   │       └── adapters/     # Platform-specific extractors
+│   ├── types/                # TypeScript types
+│   └── styles/               # Global styles (Tailwind CSS)
+├── e2e/                      # Playwright E2E tests
+│   ├── extension.spec.ts
+│   └── fixtures.ts
+└── public/                   # Static assets (icons)
 ```
 
 ## MVP Scope
@@ -163,3 +173,76 @@ src/
 - Workflow recording mode
 - PDF export
 - Institutional accounts
+
+## Development Progress
+
+### Completed Phases
+
+**Phase 1: Project Setup & Core Infrastructure**
+- WXT project initialized with React and TypeScript
+- Core dependencies installed (Dexie, browser-image-compression, date-fns, etc.)
+- Tailwind CSS v4 configured with accessible color palette
+- Database schema with Dexie.js for IndexedDB
+- Extension icons generated (16, 32, 48, 128px)
+- E2E testing with Playwright
+
+**Phase 2: Source Capture System**
+- Background service worker for capture orchestration
+- Screenshot capture with `tabs.captureVisibleTab`
+- Screenshot compression to <200KB using browser-image-compression
+- Content script for DOM metadata extraction
+- Programmatic script injection fallback
+- Session management
+
+**Phase 3: Platform Adapters**
+- ChatGPT adapter with November 2025 models (GPT-5.1, o3, o4-mini)
+- Claude adapter with November 2025 models (Opus 4.5, Sonnet 4.5, Haiku 4.5)
+- Gemini adapter with Gemini 3 support
+- YouTube adapter with video timestamp capture
+- **NotebookLM adapter** with tool context (podcasts, quizzes, flashcards, mind maps, etc.)
+- **Grok AI adapter** for grok.com and X integration
+- Generic AI detector for unknown platforms
+- Generic webpage adapter with Schema.org/OpenGraph extraction
+- Local file support (PDFs, documents) with metadata extraction via offscreen document
+
+**Phase 4: UI Components**
+- Shared UI components (Button, Input, Select, Modal, Spinner, Toast)
+- SourceCard component with thumbnails and type badges
+- Popup with loading states, success feedback, and toast notifications
+- Sidepanel with search, filtering by source type, and source deletion
+- Delete confirmation modal
+- WCAG 2.1 AA accessibility (focus indicators, ARIA labels, keyboard navigation)
+
+### Remaining Phases
+
+**Phase 5: Citation System** - citeproc-js integration with CSL styles
+- Standard citation formats (APA, MLA, Chicago, IEEE, Harvard)
+- AI tool-specific citations (include model version, date)
+- **Tool utilization context for NotebookLM** - citations should reflect HOW the tool was used:
+  - Example: "NotebookLM Audio Overview based on [Source X, Source Y]"
+  - Include output type (podcast, quiz, flashcards, mind map, etc.)
+  - Reference the source materials used to generate the output
+
+**Phase 6: Origin Trail Visualization** - vis-timeline for research journey
+- Timeline showing chronological research process
+- **Tool utilization nodes** - show not just sources but HOW they were processed:
+  - "Student uploaded [PDF A, PDF B] to NotebookLM"
+  - "Generated Audio Overview (podcast) from sources"
+  - "Created quiz for self-testing"
+  - This tells the story of the learning/research process, not just what was captured
+
+**Phase 7: Backend & Sharing** - Supabase sync and shareable links
+**Phase 8: Testing & Polish** - Final testing and release preparation
+
+## Running Tests
+
+```bash
+# Run all E2E tests
+npx playwright test
+
+# Run specific test
+npx playwright test --grep "popup"
+
+# Run tests with UI
+npx playwright test --headed
+```

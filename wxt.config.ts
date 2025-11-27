@@ -23,7 +23,8 @@ export default defineConfig({
       'sidePanel',
       'clipboardWrite',
       'scripting',
-      'tabs'
+      'tabs',
+      'offscreen'
     ],
     host_permissions: [
       '<all_urls>'
