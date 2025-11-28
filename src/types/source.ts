@@ -8,6 +8,18 @@ export interface CSLDate {
   'date-parts': [[number, number?, number?]];
 }
 
+/**
+ * A group/category for organizing sources (e.g., "Assignment 1", "History Paper")
+ */
+export interface SourceGroup {
+  id?: string;
+  name: string;
+  description?: string;
+  color?: string; // Hex color for visual distinction (e.g., "#3b82f6")
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface SourceCapture {
   id?: string;
   createdAt: Date;
@@ -77,6 +89,13 @@ export interface SourceCapture {
   userNotes?: string;
   highlightedExcerpt?: string;
   tags?: string[];
+
+  // Group membership (many-to-many relationship via array of group IDs)
+  groupIds?: string[];
+
+  // Soft delete (keeps source in origin trail but hides from main lists)
+  isDeleted?: boolean;
+  deletedAt?: Date;
 
   // Provenance tracking
   provenance: {

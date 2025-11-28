@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../src/lib/db';
+import { softDeleteSource, permanentlyDeleteSource, restoreSource } from '../../src/lib/db/sources';
+import { addSourcesToGroup, removeSourceFromGroup } from '../../src/lib/db/groups';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Select } from '../../src/components/ui/Select';
@@ -9,9 +11,13 @@ import { SourceCard } from '../../src/components/SourceCard';
 import { Modal } from '../../src/components/ui/Modal';
 import { CitationFormatter } from '../../src/components/CitationFormatter';
 import { OriginTrail } from '../../src/components/OriginTrail';
+import { GroupList } from '../../src/components/GroupList';
+import { GroupManager } from '../../src/components/GroupManager';
+import { GroupSelector } from '../../src/components/GroupSelector';
 
 type Tab = 'sources' | 'timeline' | 'share';
 type SourceType = 'all' | 'ai-conversation' | 'webpage' | 'video' | 'academic' | 'pdf' | 'document';
+type DeleteAction = 'soft' | 'permanent' | 'remove-from-group';
 
 function SidepanelContent() {
   const [activeTab, setActiveTab] = useState<Tab>('sources');
@@ -20,17 +26,57 @@ function SidepanelContent() {
   const [filterType, setFilterType] = useState<SourceType>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [timelineSelectedId, setTimelineSelectedId] = useState<string | undefined>();
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [showGroupManager, setShowGroupManager] = useState(false);
+  const [showBulkGroupSelector, setShowBulkGroupSelector] = useState(false);
+  const [groupSidebarCollapsed, setGroupSidebarCollapsed] = useState(false);
   const { addToast } = useToast();
 
-  const sources = useLiveQuery(
+  // Fetch all sources (including deleted for origin trail)
+  const allSources = useLiveQuery(
     () => db.sources.orderBy('createdAt').reverse().toArray()
   );
 
-  // Filter sources based on search and type
+  // Active sources only (excludes deleted)
+  const sources = useMemo(() => {
+    if (!allSources) return [];
+    return allSources.filter(s => !s.isDeleted);
+  }, [allSources]);
+
+  // Deleted sources
+  const deletedSources = useMemo(() => {
+    if (!allSources) return [];
+    return allSources.filter(s => s.isDeleted);
+  }, [allSources]);
+
+  // Filter sources based on search, type, and group
   const filteredSources = useMemo(() => {
+    // If showing deleted, return deleted sources with search/type filter only
+    if (showDeleted) {
+      return deletedSources.filter(source => {
+        if (filterType !== 'all' && source.sourceType !== filterType) return false;
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          const matchesTitle = source.metadata.title?.toLowerCase().includes(query);
+          const matchesUrl = source.metadata.URL?.toLowerCase().includes(query);
+          const matchesPlatform = source.platform?.toLowerCase().includes(query);
+          if (!matchesTitle && !matchesUrl && !matchesPlatform) return false;
+        }
+        return true;
+      });
+    }
+
     if (!sources) return [];
 
     return sources.filter(source => {
+      // Group filter
+      if (selectedGroupId === 'ungrouped') {
+        if (source.groupIds && source.groupIds.length > 0) return false;
+      } else if (selectedGroupId) {
+        if (!source.groupIds || !source.groupIds.includes(selectedGroupId)) return false;
+      }
+
       // Type filter
       if (filterType !== 'all' && source.sourceType !== filterType) {
         return false;
@@ -51,7 +97,7 @@ function SidepanelContent() {
 
       return true;
     });
-  }, [sources, searchQuery, filterType]);
+  }, [sources, deletedSources, searchQuery, filterType, selectedGroupId, showDeleted]);
 
   const toggleSourceSelection = (id: string) => {
     setSelectedSourceIds(prev => {
@@ -73,12 +119,12 @@ function SidepanelContent() {
     setSelectedSourceIds(new Set());
   };
 
-  const handleDelete = async (id: string) => {
+  const handleSoftDelete = async (id: string) => {
     try {
-      await db.sources.delete(id);
+      await softDeleteSource(id);
       selectedSourceIds.delete(id);
       setSelectedSourceIds(new Set(selectedSourceIds));
-      addToast('success', 'Source deleted');
+      addToast('success', 'Source moved to deleted (still visible in Origin Trail)');
       setDeleteConfirmId(null);
     } catch (err) {
       addToast('error', 'Failed to delete source');
@@ -86,8 +132,54 @@ function SidepanelContent() {
     }
   };
 
+  const handlePermanentDelete = async (id: string) => {
+    try {
+      await permanentlyDeleteSource(id);
+      selectedSourceIds.delete(id);
+      setSelectedSourceIds(new Set(selectedSourceIds));
+      addToast('success', 'Source permanently deleted');
+      setDeleteConfirmId(null);
+    } catch (err) {
+      addToast('error', 'Failed to permanently delete source');
+      console.error('Delete error:', err);
+    }
+  };
+
+  const handleRemoveFromGroup = async (sourceId: string, groupId: string) => {
+    try {
+      await removeSourceFromGroup(sourceId, groupId);
+      addToast('success', 'Source removed from group');
+      setDeleteConfirmId(null);
+    } catch (err) {
+      addToast('error', 'Failed to remove source from group');
+      console.error('Remove from group error:', err);
+    }
+  };
+
+  const handleRestoreSource = async (id: string) => {
+    try {
+      await restoreSource(id);
+      addToast('success', 'Source restored');
+    } catch (err) {
+      addToast('error', 'Failed to restore source');
+      console.error('Restore error:', err);
+    }
+  };
+
+  const handleSelectGroup = (groupId: string | null) => {
+    setSelectedGroupId(groupId);
+    setShowDeleted(false);
+    clearSelection();
+  };
+
+  const handleToggleDeleted = () => {
+    setShowDeleted(!showDeleted);
+    setSelectedGroupId(null);
+    clearSelection();
+  };
+
   const sourceToDelete = deleteConfirmId
-    ? sources?.find(s => s.id === deleteConfirmId)
+    ? allSources?.find(s => s.id === deleteConfirmId)
     : null;
 
   return (
@@ -134,8 +226,46 @@ function SidepanelContent() {
           hidden={activeTab !== 'sources'}
           className="flex-1 flex"
         >
+          {/* Group Sidebar */}
+          <div className={`${groupSidebarCollapsed ? 'w-10' : 'w-48'} flex-shrink-0 transition-all duration-200`}>
+            {groupSidebarCollapsed ? (
+              <div className="h-full bg-neutral-50 border-r border-neutral-200 flex flex-col items-center py-2">
+                <button
+                  onClick={() => setGroupSidebarCollapsed(false)}
+                  className="p-2 text-neutral-600 hover:bg-neutral-100 rounded"
+                  aria-label="Expand groups sidebar"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-end p-1 border-b border-neutral-200 bg-neutral-50">
+                  <button
+                    onClick={() => setGroupSidebarCollapsed(true)}
+                    className="p-1 text-neutral-400 hover:text-neutral-600 rounded"
+                    aria-label="Collapse groups sidebar"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                </div>
+                <GroupList
+                  selectedGroupId={selectedGroupId}
+                  onSelectGroup={handleSelectGroup}
+                  onManageGroups={() => setShowGroupManager(true)}
+                  showDeleted={showDeleted}
+                  onToggleDeleted={handleToggleDeleted}
+                />
+              </div>
+            )}
+          </div>
+
           {/* Source List */}
-          <div className="w-1/2 border-r overflow-y-auto flex flex-col">
+          <div className="flex-1 border-r overflow-y-auto flex flex-col min-w-0">
             {/* Search and Filter */}
             <div className="p-4 border-b space-y-3">
               <Input
@@ -166,11 +296,26 @@ function SidepanelContent() {
             {/* Source List Header */}
             <div className="flex justify-between items-center p-4 pb-2">
               <h2 className="font-medium text-neutral-800">
-                {filteredSources.length === sources?.length
-                  ? `All Sources (${sources?.length || 0})`
-                  : `Showing ${filteredSources.length} of ${sources?.length || 0}`}
+                {showDeleted ? (
+                  `Deleted Sources (${filteredSources.length})`
+                ) : selectedGroupId ? (
+                  `Showing ${filteredSources.length} sources`
+                ) : filteredSources.length === sources?.length ? (
+                  `All Sources (${sources?.length || 0})`
+                ) : (
+                  `Showing ${filteredSources.length} of ${sources?.length || 0}`
+                )}
               </h2>
               <div className="flex gap-2">
+                {selectedSourceIds.size > 0 && !showDeleted && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowBulkGroupSelector(true)}
+                  >
+                    Add to Group
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={selectAll}>
                   Select All
                 </Button>
@@ -186,29 +331,48 @@ function SidepanelContent() {
             <div className="flex-1 overflow-y-auto p-4 pt-2">
               <div className="space-y-2" role="listbox" aria-multiselectable="true">
                 {filteredSources.map(source => (
-                  <SourceCard
-                    key={source.id}
-                    source={source}
-                    isSelected={selectedSourceIds.has(source.id!)}
-                    onClick={() => toggleSourceSelection(source.id!)}
-                    onDelete={() => setDeleteConfirmId(source.id!)}
-                    showThumbnail
-                  />
+                  <div key={source.id} className="relative">
+                    <SourceCard
+                      source={source}
+                      isSelected={selectedSourceIds.has(source.id!)}
+                      onClick={() => toggleSourceSelection(source.id!)}
+                      onDelete={() => setDeleteConfirmId(source.id!)}
+                      showThumbnail
+                      showGroups={!showDeleted}
+                      currentGroupId={selectedGroupId}
+                    />
+                    {/* Restore button for deleted sources */}
+                    {showDeleted && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestoreSource(source.id!);
+                        }}
+                      >
+                        Restore
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
 
               {filteredSources.length === 0 && (
                 <p className="text-neutral-500 italic text-center py-8">
-                  {sources?.length === 0
-                    ? 'No sources captured yet.'
-                    : 'No sources match your search.'}
+                  {showDeleted
+                    ? 'No deleted sources.'
+                    : sources?.length === 0
+                      ? 'No sources captured yet.'
+                      : 'No sources match your filters.'}
                 </p>
               )}
             </div>
           </div>
 
           {/* Citation Panel */}
-          <div className="w-1/2 overflow-hidden flex flex-col">
+          <div className="w-1/3 overflow-hidden flex flex-col min-w-0">
             <CitationFormatter
               sources={sources?.filter(s => selectedSourceIds.has(s.id!)) || []}
             />
@@ -258,13 +422,67 @@ function SidepanelContent() {
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={deleteConfirmId !== null}
+        isOpen={deleteConfirmId !== null && !sourceToDelete?.isDeleted}
         onClose={() => setDeleteConfirmId(null)}
         title="Delete Source"
       >
         <p className="text-neutral-600 mb-4">
-          Are you sure you want to delete "{sourceToDelete?.metadata.title}"?
-          This action cannot be undone.
+          What would you like to do with "{sourceToDelete?.metadata.title}"?
+        </p>
+
+        <div className="space-y-3">
+          {/* Remove from current group option (only if viewing a specific group) */}
+          {selectedGroupId && selectedGroupId !== 'ungrouped' && (
+            <button
+              onClick={() => deleteConfirmId && handleRemoveFromGroup(deleteConfirmId, selectedGroupId)}
+              className="w-full p-3 text-left border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+            >
+              <div className="font-medium text-neutral-900">Remove from this group</div>
+              <div className="text-sm text-neutral-500">
+                The source will remain in your library and other groups.
+              </div>
+            </button>
+          )}
+
+          {/* Soft delete option */}
+          <button
+            onClick={() => deleteConfirmId && handleSoftDelete(deleteConfirmId)}
+            className="w-full p-3 text-left border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors"
+          >
+            <div className="font-medium text-amber-900">Delete source</div>
+            <div className="text-sm text-amber-700">
+              Removes from all groups but keeps in Origin Trail for provenance tracking.
+            </div>
+          </button>
+
+          {/* Permanent delete option */}
+          <button
+            onClick={() => deleteConfirmId && handlePermanentDelete(deleteConfirmId)}
+            className="w-full p-3 text-left border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+          >
+            <div className="font-medium text-red-900">Permanently delete</div>
+            <div className="text-sm text-red-700">
+              Completely removes the source. This cannot be undone.
+            </div>
+          </button>
+        </div>
+
+        <div className="flex justify-end mt-4">
+          <Button variant="ghost" onClick={() => setDeleteConfirmId(null)}>
+            Cancel
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Permanent Delete Confirmation for already-deleted sources */}
+      <Modal
+        isOpen={deleteConfirmId !== null && sourceToDelete?.isDeleted === true}
+        onClose={() => setDeleteConfirmId(null)}
+        title="Permanently Delete Source"
+      >
+        <p className="text-neutral-600 mb-4">
+          Are you sure you want to permanently delete "{sourceToDelete?.metadata.title}"?
+          This will remove it from the Origin Trail and cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteConfirmId(null)}>
@@ -273,11 +491,34 @@ function SidepanelContent() {
           <Button
             variant="primary"
             className="bg-red-600 hover:bg-red-700"
-            onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+            onClick={() => deleteConfirmId && handlePermanentDelete(deleteConfirmId)}
           >
-            Delete
+            Permanently Delete
           </Button>
         </div>
+      </Modal>
+
+      {/* Group Manager Modal */}
+      <GroupManager
+        isOpen={showGroupManager}
+        onClose={() => setShowGroupManager(false)}
+      />
+
+      {/* Bulk Group Selector Modal */}
+      <Modal
+        isOpen={showBulkGroupSelector}
+        onClose={() => setShowBulkGroupSelector(false)}
+        title="Add Sources to Group"
+      >
+        <GroupSelector
+          sourceIds={Array.from(selectedSourceIds)}
+          currentGroupIds={[]}
+          onClose={() => setShowBulkGroupSelector(false)}
+          onGroupsChanged={() => {
+            setShowBulkGroupSelector(false);
+            addToast('success', `Added ${selectedSourceIds.size} sources to group`);
+          }}
+        />
       </Modal>
     </div>
   );

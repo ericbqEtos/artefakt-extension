@@ -32,25 +32,31 @@ function getSourceTypeInfo(type: string) {
 function sourceToTimelineItem(source: SourceCapture, thumbnailUrl?: string): TimelineItem {
   const colors = getSourceTypeInfo(source.sourceType);
   const platformLabel = source.platform || colors.label;
+  const isDeleted = source.isDeleted === true;
 
-  // Create content with optional thumbnail
+  // Create content with optional thumbnail and deleted indicator
   let content = `
-    <div class="timeline-item">
-      ${thumbnailUrl ? `<img src="${thumbnailUrl}" class="timeline-thumb" alt="" />` : ''}
+    <div class="timeline-item ${isDeleted ? 'timeline-item-deleted' : ''}">
+      ${thumbnailUrl ? `<img src="${thumbnailUrl}" class="timeline-thumb ${isDeleted ? 'opacity-50' : ''}" alt="" />` : ''}
       <div class="timeline-content">
-        <span class="timeline-title" title="${source.metadata.title}">${source.metadata.title}</span>
-        <span class="timeline-platform">${platformLabel}</span>
+        <span class="timeline-title ${isDeleted ? 'line-through opacity-60' : ''}" title="${source.metadata.title}">${source.metadata.title}</span>
+        <span class="timeline-platform">${platformLabel}${isDeleted ? ' (Deleted)' : ''}</span>
       </div>
     </div>
   `;
+
+  // Deleted sources get muted styling
+  const bgColor = isDeleted ? '#f5f5f5' : colors.background;
+  const borderColor = isDeleted ? '#d4d4d4' : colors.border;
+  const textColor = isDeleted ? '#737373' : colors.text;
 
   return {
     id: source.id!,
     content,
     start: new Date(source.createdAt),
-    className: `source-${source.sourceType}`,
-    style: `background-color: ${colors.background}; border-color: ${colors.border}; color: ${colors.text};`,
-    title: `${source.metadata.title}\n${format(new Date(source.createdAt), 'PPpp')}`,
+    className: `source-${source.sourceType} ${isDeleted ? 'source-deleted' : ''}`,
+    style: `background-color: ${bgColor}; border-color: ${borderColor}; color: ${textColor}; ${isDeleted ? 'opacity: 0.7;' : ''}`,
+    title: `${source.metadata.title}${isDeleted ? ' (Deleted)' : ''}\n${format(new Date(source.createdAt), 'PPpp')}`,
   };
 }
 
@@ -105,14 +111,28 @@ function SourceDetailPanel({
 }) {
   const typeInfo = getSourceTypeInfo(source.sourceType);
 
+  const isDeleted = source.isDeleted === true;
+
   return (
-    <div className="bg-white border rounded-lg shadow-lg overflow-hidden">
+    <div className={`bg-white border rounded-lg shadow-lg overflow-hidden ${isDeleted ? 'border-neutral-300' : ''}`}>
+      {/* Deleted Banner */}
+      {isDeleted && (
+        <div className="bg-neutral-100 border-b border-neutral-200 px-4 py-2 flex items-center gap-2">
+          <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span className="text-sm text-neutral-600">
+            This source was deleted but kept for provenance tracking
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-4 border-b flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span
-              className="px-2 py-0.5 text-xs font-medium rounded-full"
+              className={`px-2 py-0.5 text-xs font-medium rounded-full ${isDeleted ? 'opacity-60' : ''}`}
               style={{ backgroundColor: typeInfo.background, color: typeInfo.text, border: `1px solid ${typeInfo.border}` }}
             >
               {source.platform || typeInfo.label}
@@ -121,7 +141,7 @@ function SourceDetailPanel({
               {formatDistanceToNow(new Date(source.createdAt), { addSuffix: true })}
             </span>
           </div>
-          <h3 className="font-semibold text-neutral-900 line-clamp-2">
+          <h3 className={`font-semibold line-clamp-2 ${isDeleted ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
             {source.metadata.title}
           </h3>
           {source.metadata.URL && (

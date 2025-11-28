@@ -1,14 +1,23 @@
-import { useState, useEffect, useMemo } from 'react';
-import type { SourceCapture } from '../types/source';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import type { SourceCapture, SourceGroup } from '../types/source';
 import { formatDistanceToNow } from 'date-fns';
+import { db } from '../lib/db';
+import { GroupBadge } from './ui/GroupBadge';
+import { GroupSelector } from './GroupSelector';
+import { removeSourceFromGroup } from '../lib/db/groups';
 
 interface SourceCardProps {
   source: SourceCapture;
   isSelected?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  onAddToGroup?: () => void;
   showThumbnail?: boolean;
   compact?: boolean;
+  showGroups?: boolean;
+  currentGroupId?: string | null;
 }
 
 export function SourceCard({
@@ -16,10 +25,23 @@ export function SourceCard({
   isSelected = false,
   onClick,
   onDelete,
+  onAddToGroup,
   showThumbnail = true,
-  compact = false
+  compact = false,
+  showGroups = true,
+  currentGroupId = null
 }: SourceCardProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [showGroupSelector, setShowGroupSelector] = useState(false);
+  const [selectorPosition, setSelectorPosition] = useState<{ top: number; left: number } | null>(null);
+  const groupButtonRef = useRef<HTMLButtonElement>(null);
+  const groupSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Fetch groups for this source
+  const sourceGroups = useLiveQuery(async () => {
+    if (!source.groupIds || source.groupIds.length === 0) return [];
+    return db.groups.where('id').anyOf(source.groupIds).toArray();
+  }, [source.groupIds]) as SourceGroup[] | undefined;
 
   // Create object URL for thumbnail
   useEffect(() => {
@@ -29,6 +51,42 @@ export function SourceCard({
       return () => URL.revokeObjectURL(url);
     }
   }, [source.screenshot?.thumbnail, showThumbnail]);
+
+  // Close group selector when clicking outside
+  useEffect(() => {
+    if (!showGroupSelector) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // Check if click is outside both the selector and the trigger button
+      const isOutsideSelector = groupSelectorRef.current && !groupSelectorRef.current.contains(target);
+      const isOutsideButton = groupButtonRef.current && !groupButtonRef.current.contains(target);
+
+      if (isOutsideSelector && isOutsideButton) {
+        setShowGroupSelector(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showGroupSelector]);
+
+  const handleRemoveFromGroup = async (groupId: string) => {
+    if (!source.id) return;
+    await removeSourceFromGroup(source.id, groupId);
+  };
+
+  const handleToggleGroupSelector = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showGroupSelector && groupButtonRef.current) {
+      const rect = groupButtonRef.current.getBoundingClientRect();
+      setSelectorPosition({
+        top: rect.bottom + 4,
+        left: Math.max(8, rect.right - 256), // 256px is the selector width, ensure it doesn't go off-screen
+      });
+    }
+    setShowGroupSelector(!showGroupSelector);
+  };
 
   // Format the capture time
   const captureTime = useMemo(() => {
@@ -177,27 +235,52 @@ export function SourceCard({
           </p>
         </div>
 
-        {/* Delete button (on hover) */}
-        {onDelete && (
+        {/* Action buttons (on hover) */}
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all">
+          {/* Add to group button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="
-              absolute top-2 right-2 p-1 rounded
-              opacity-0 group-hover:opacity-100 focus:opacity-100
-              bg-white/80 hover:bg-red-50 text-neutral-400 hover:text-red-600
-              transition-all
-            "
-            aria-label={`Delete ${source.metadata.title}`}
+            ref={groupButtonRef}
+            onClick={handleToggleGroupSelector}
+            className="p-1 rounded bg-white/80 hover:bg-primary-50 text-neutral-400 hover:text-primary-600 transition-all"
+            aria-label={`Add ${source.metadata.title} to group`}
+            aria-expanded={showGroupSelector}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
             </svg>
           </button>
-        )}
+
+          {/* Delete button */}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-1 rounded bg-white/80 hover:bg-red-50 text-neutral-400 hover:text-red-600 transition-all"
+              aria-label={`Delete ${source.metadata.title}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Groups */}
+      {showGroups && sourceGroups && sourceGroups.length > 0 && (
+        <div className="px-3 pb-2 flex flex-wrap gap-1">
+          {sourceGroups.map(group => (
+            <GroupBadge
+              key={group.id}
+              group={group}
+              size="sm"
+              onRemove={currentGroupId === group.id ? () => handleRemoveFromGroup(group.id!) : undefined}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Tags */}
       {source.tags && source.tags.length > 0 && (
@@ -220,6 +303,25 @@ export function SourceCard({
             {source.userNotes}
           </p>
         </div>
+      )}
+
+      {/* Group selector popover - rendered via portal to escape overflow:hidden containers */}
+      {showGroupSelector && selectorPosition && createPortal(
+        <div
+          ref={groupSelectorRef}
+          className="fixed z-[9999]"
+          style={{
+            top: selectorPosition.top,
+            left: selectorPosition.left,
+          }}
+        >
+          <GroupSelector
+            sourceIds={[source.id!]}
+            currentGroupIds={source.groupIds || []}
+            onClose={() => setShowGroupSelector(false)}
+          />
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -38,7 +38,9 @@
       "Bash(npx tsc:*)",
       "WebFetch(domain:notebooklm.google)",
       "WebFetch(domain:grok.com)",
-      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 5)"
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 5)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 5 --repo EricBlomquist/artefakt-extension)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 6)"
     ],
     "deny": [],
     "ask": []
