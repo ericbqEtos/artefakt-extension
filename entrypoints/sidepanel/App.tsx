@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../src/lib/db';
 import { softDeleteSource, permanentlyDeleteSource, restoreSource } from '../../src/lib/db/sources';
@@ -14,13 +14,43 @@ import { OriginTrail } from '../../src/components/OriginTrail';
 import { GroupList } from '../../src/components/GroupList';
 import { GroupManager } from '../../src/components/GroupManager';
 import { GroupSelector } from '../../src/components/GroupSelector';
+import { SettingsPanel } from '../../src/components/settings';
 
-type Tab = 'sources' | 'timeline' | 'share';
+type Tab = 'sources' | 'timeline' | 'share' | 'settings';
 type SourceType = 'all' | 'ai-conversation' | 'webpage' | 'video' | 'academic' | 'pdf' | 'document';
 type DeleteAction = 'soft' | 'permanent' | 'remove-from-group';
 
+const validTabs: Tab[] = ['sources', 'timeline', 'share', 'settings'];
+
+function getInitialTab(): Tab {
+  // Check URL hash first (for fallback tab navigation)
+  const hash = window.location.hash.slice(1);
+  if (validTabs.includes(hash as Tab)) {
+    return hash as Tab;
+  }
+  return 'sources';
+}
+
 function SidepanelContent() {
-  const [activeTab, setActiveTab] = useState<Tab>('sources');
+  const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
+
+  // Check session storage for tab navigation from popup
+  useEffect(() => {
+    const checkSessionStorage = async () => {
+      try {
+        const result = await browser.storage.session.get('sidepanelTab');
+        if (result.sidepanelTab && validTabs.includes(result.sidepanelTab)) {
+          setActiveTab(result.sidepanelTab as Tab);
+          // Clear the stored tab so it doesn't persist
+          await browser.storage.session.remove('sidepanelTab');
+        }
+      } catch (err) {
+        // Session storage might not be available in all contexts
+        console.debug('Could not read session storage:', err);
+      }
+    };
+    checkSessionStorage();
+  }, []);
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<SourceType>('all');
@@ -186,12 +216,28 @@ function SidepanelContent() {
     <div className="h-screen flex flex-col bg-white">
       {/* Header */}
       <header className="border-b p-4">
-        <h1 className="text-xl font-semibold text-neutral-900">
-          Artefakt
-        </h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-xl font-semibold text-neutral-900">
+            Artefakt
+          </h1>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              activeTab === 'settings'
+                ? 'text-primary-700 bg-primary-100'
+                : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'
+            }`}
+            aria-label="Open settings"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
 
         {/* Tab Navigation */}
-        <nav className="flex gap-2 mt-3" role="tablist" aria-label="Main sections">
+        <nav className="flex gap-2" role="tablist" aria-label="Main sections">
           {[
             { id: 'sources', label: 'Sources' },
             { id: 'timeline', label: 'Origin Trail' },
@@ -417,6 +463,17 @@ function SidepanelContent() {
           <p className="text-neutral-500 italic">
             Coming in Phase 7: Generate shareable links to your research process.
           </p>
+        </div>
+
+        {/* Settings Panel */}
+        <div
+          id="settings-panel"
+          role="tabpanel"
+          aria-labelledby="settings-tab"
+          hidden={activeTab !== 'settings'}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
+          <SettingsPanel />
         </div>
       </main>
 

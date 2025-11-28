@@ -1,10 +1,17 @@
 import Dexie, { type Table } from 'dexie';
 import type { SourceCapture, ResearchSession, SourceGroup } from '../../types/source';
+import type { ExtensionSettings } from '../../types/settings';
+
+export interface SettingsRecord {
+  key: string;
+  value: ExtensionSettings;
+}
 
 export class ArtefaktDatabase extends Dexie {
   sources!: Table<SourceCapture>;
   sessions!: Table<ResearchSession>;
   groups!: Table<SourceGroup>;
+  settings!: Table<SettingsRecord>;
 
   constructor() {
     super('ArtefaktDB');
@@ -31,6 +38,14 @@ export class ArtefaktDatabase extends Dexie {
           source.isDeleted = false;
         }
       });
+    });
+
+    // Version 3: Add settings table
+    this.version(3).stores({
+      sources: '++id, createdAt, sourceType, platform, provenance.sessionId, *groupIds, isDeleted',
+      sessions: '++id, createdAt, userId, isActive',
+      groups: '++id, name, createdAt',
+      settings: 'key'
     });
   }
 }

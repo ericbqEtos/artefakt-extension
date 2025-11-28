@@ -11,6 +11,7 @@ import {
   type CitationStyleId,
   type CitationResult
 } from '../lib/citation';
+import { getSettings } from '../lib/db/settings';
 import type { SourceCapture } from '../types/source';
 
 interface CitationFormatterProps {
@@ -23,20 +24,32 @@ export function CitationFormatter({ sources, onClose }: CitationFormatterProps) 
   const [citations, setCitations] = useState<Map<string, CitationResult>>(new Map());
   const [fullBibliography, setFullBibliography] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<'bibliography' | 'intext'>('bibliography');
   const { addToast } = useToast();
 
   const availableStyles = getAvailableStyles();
 
-  // Preload common styles on mount
+  // Load user's preferred citation style and preload common styles on mount
   useEffect(() => {
-    preloadCommonStyles().catch(console.error);
+    const loadSettingsAndStyles = async () => {
+      try {
+        const settings = await getSettings();
+        setSelectedStyle(settings.defaultCitationStyle as CitationStyleId);
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      } finally {
+        setSettingsLoaded(true);
+      }
+      preloadCommonStyles().catch(console.error);
+    };
+    loadSettingsAndStyles();
   }, []);
 
   // Generate citations when sources or style changes
   const generateCitationsForSources = useCallback(async () => {
-    if (sources.length === 0) {
+    if (!settingsLoaded || sources.length === 0) {
       setCitations(new Map());
       setFullBibliography('');
       return;
@@ -73,7 +86,7 @@ export function CitationFormatter({ sources, onClose }: CitationFormatterProps) 
     } finally {
       setIsLoading(false);
     }
-  }, [sources, selectedStyle]);
+  }, [sources, selectedStyle, settingsLoaded]);
 
   useEffect(() => {
     generateCitationsForSources();
